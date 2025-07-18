@@ -1,28 +1,127 @@
 import streamlit as st
-import openai
-import google.generativeai as genai
 import os
-from dotenv import load_dotenv
 import time
 import io
+from dotenv import load_dotenv
+
+# Try to import AI libraries with error handling
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    st.error("⚠️ OpenAI library not found. Please install: pip install openai")
+
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    st.error("⚠️ Google Generative AI library not found. Please install: pip install google-generativeai")
 
 # Load environment variables
 load_dotenv()
 
 # Configure APIs
 def configure_apis():
+    if not OPENAI_AVAILABLE and not GEMINI_AVAILABLE:
+        st.error("❌ Hiçbir AI kütüphanesi bulunamadı!")
+        return False
+    
     openai_api_key = st.session_state.get('openai_api_key', '')
     gemini_api_key = st.session_state.get('gemini_api_key', '')
     
-    if openai_api_key:
+    if openai_api_key and OPENAI_AVAILABLE:
         openai.api_key = openai_api_key
     
-    if gemini_api_key:
+    if gemini_api_key and GEMINI_AVAILABLE:
         genai.configure(api_key=gemini_api_key)
+    
+    return True
 
 # Shopify-optimized prompt for product description generation
-def get_shopify_prompt(keyword):
-    prompt = f"""
+def get_shopify_prompt(keyword, language="English"):
+    if language == "Türkçe":
+        prompt = f"""
+Sen Shopify ürün açıklamaları konusunda uzman bir e-ticaret metin yazarısın. "{keyword}" ile ilgili bir ürün için kapsamlı, SEO optimize edilmiş Türkçe ürün açıklaması oluştur.
+
+KRİTİK YAZMA PRENSİPLERİ (Yüksek Dönüşüm Örneklerine Dayalı):
+1. İLHAM VER & MOTİVE ET - Sadece açıklama yapma, müşterilerin başarı yolculuklarını hayal etmelerine yardım et
+2. SPESİFİK & AÇIKLAYICI OL - Belirsiz dil kullanma, önemli olan kesin detayları kullan
+3. MÜŞTERİ FAYDALARINA ODAKLAN - Bu ürün hayatlarına ne katacak?
+4. ANAHTAR KELİME DOLDURMAKTAN KAÇIN - Doğal, bağlamsal anahtar kelime entegrasyonu kullan
+5. DUYGUSAL BAĞLANTI KUR - Hedef kitleye hitap eden dil kullan
+6. PRATİK TEŞVİKLER EKLİ - Kargo, garanti veya özel tekliflerden bahset
+
+ETKİLİ VS ETKİSİZ YAKLAŞIM ÖRNEKLERİ:
+✅ İYİ: "Fitness yolculuğunuzu kalıcı sonuçlar için tasarlanmış üst düzey ekipmanlarla yükseltin"
+❌ KÖTÜ: "Ev ve spor salonu kullanımı için fitness ekipmanı satın alın"
+
+✅ İYİ: "Doğa ile uyum içinde giyinmenizi sağlayan çevre dostu kıyafetlerle sürdürülebilir stile adım atın"
+❌ KÖTÜ: "Çevre dostu kıyafetler mevcut. Sürdürülebilir ürünlerimize göz atın"
+
+✅ İYİ: "Gerçek zamanlı olarak yazınızı düzelten kendi kendini bileyen mekanik kalem"
+❌ KÖTÜ: "Mekanik kalem"
+
+Gereksinimler:
+1. Shopify'a uygun HTML formatında yaz
+2. Uygun başlık hiyerarşisi kullan (h1, h2, h3, h4)
+3. Eyleme geçmeye ilham veren etkileyici ürün özellik ve faydaları ekle
+4. Duygusal tetikleyicilerle ikna edici eylem çağrısı öğeleri ekle
+5. Doğal anahtar kelime entegrasyonu ile arama motorları için optimize et (ANAHTAR KELİME DOLDURMA YOK)
+6. Shopify'ın en iyi uygulamalarını takip et
+7. Uygun olduğunda sosyal kanıt öğeleri ve güven sinyalleri ekle
+8. Net değer önermeleriyle dönüşüm odaklı ve müşteri merkezli yap
+
+Yanıtını şu yapıyla oluştur:
+- Ürün Başlığı (h1) - İlham verici ve spesifik yap
+- Etkileyici Açılış Bildirimi (p) - Müşteriyi hemen yakala
+- Ana Özellikler ve Faydalar (h2) - Dönüşüm ve sonuçlara odaklan
+- Ürün Detayları (h3) - Spesifik ve açıklayıcı ol
+- Ürün Boyutları (h3) - HER ZAMAN hem inç hem santimetre cinsinden gerçekçi boyutlar ekle
+  * TABLO formatında düzenle, liste değil
+  * Örnek format:
+    <table style="width:100%; border-collapse: collapse; margin: 10px 0;">
+    <tr style="background-color: #f8f9fa;">
+      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Boyut</th>
+      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">İnç</th>
+      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Santimetre</th>
+    </tr>
+    <tr>
+      <td style="border: 1px solid #ddd; padding: 8px;">Uzunluk</td>
+      <td style="border: 1px solid #ddd; padding: 8px;">12"</td>
+      <td style="border: 1px solid #ddd; padding: 8px;">30,5 cm</td>
+    </tr>
+    </table>
+  * Uzunluk, Genişlik, Yükseklik, Derinlik, Çap gibi ilgili boyutları ekle
+  * Ürün kategorisi için gerçekçi boyutlar yap
+- Teknik Özellikler (h4 gerekirse) - İlgili teknik detayları ekle
+- Bakım Talimatları veya Kullanım Kılavuzları (h3) - Pratik katma değer bilgisi
+- Bu Ürünü Neden Seçmelisiniz (h2) - Farklılaşma ve benzersiz değer
+- Müşteri Faydaları ve Yaşam Tarzı Etkisi (h3) - Başarı resmini çiz
+- Eylem Çağrısı Bölümü - Aciliyet ve arzu yarat
+
+Kılavuzlar:
+- Eyleme geçmeye ilham veren duygusal tetikleyiciler ve güç kelimeleri kullan
+- Sadece özellikler değil faydalar ve dönüşüme odaklan
+- Müşterilerin ilişki kurabileceği yaşam tarzı ve kullanım senaryolarını ekle
+- Madde işaretleri ve kısa, etkili paragraflarla taranabilir yap
+- Net hiyerarşiyle mobil okuma için optimize et
+- Güven sinyalleri, garantiler ve pratik teşvikler ekle (ücretsiz kargo, garantiler vb.)
+- Dönüşümleri artıran ve arzu yaratan ikna edici dil kullan
+- Spesifik ve açıklayıcı ol - genel ifadelerden kaçın
+- Müşterilerin ürününle başarı yolculuklarını hayal etmelerine yardım et
+- Pratik değer verirken duygusal bağlantı kur
+- HER ZAMAN hem inç hem santimetre cinsinden gerçekçi ürün boyutları ekle
+- Boyutları kolay tarama için düzenli TABLO formatında sun, liste değil
+- Boyutları ürün kategorisine uygun ve gerçekçi yap
+
+"{keyword}" kategorisinde premium kaliteli bir ürün satıyormuş gibi açıklama yaz. Etkileyici, bilgilendirici, dönüşüm optimize edilmiş ve ilham verici yap. Bu ürünün müşterinin hayatını nasıl dönüştüreceğine veya spesifik problemlerini nasıl çözeceğine odaklan.
+
+Sadece HTML içeriğini çıktı ver, ek açıklama veya markdown formatlaması olmadan.
+"""
+    else:  # English
+        prompt = f"""
 You are an expert e-commerce copywriter specializing in Shopify product descriptions. Create a comprehensive, SEO-optimized product description for a product related to "{keyword}".
 
 CRITICAL WRITING PRINCIPLES (Based on High-Converting Examples):
@@ -59,8 +158,20 @@ Structure your response with:
 - Key Features & Benefits (h2) - Focus on transformation and results
 - Product Details (h3) - Be specific and descriptive
 - Product Dimensions (h3) - ALWAYS include realistic dimensions in BOTH inches and centimeters
-  * Format as clean HTML list with both measurements
-  * Example: <li>Length: 12 inches (30.5 cm)</li>
+  * Format as HTML TABLE, not list
+  * Example format:
+    <table style="width:100%; border-collapse: collapse; margin: 10px 0;">
+    <tr style="background-color: #f8f9fa;">
+      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Dimension</th>
+      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Inches</th>
+      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Centimeters</th>
+    </tr>
+    <tr>
+      <td style="border: 1px solid #ddd; padding: 8px;">Length</td>
+      <td style="border: 1px solid #ddd; padding: 8px;">12"</td>
+      <td style="border: 1px solid #ddd; padding: 8px;">30.5 cm</td>
+    </tr>
+    </table>
   * Include relevant dimensions like: Length, Width, Height, Depth, Diameter, etc.
   * Make dimensions realistic for the product category
 - Specifications (h4 if needed) - Include relevant technical details
@@ -81,25 +192,33 @@ Guidelines:
 - Help customers envision their success journey with your product
 - Create emotional connection while providing practical value
 - ALWAYS include realistic product dimensions in both inches and centimeters
-- Present dimensions in a clear, organized list format for easy scanning
+- Present dimensions in a clear, organized TABLE format for easy scanning, not lists
 - Make dimensions appropriate for the product category and realistic
 
 Write the description as if you're selling a premium quality product in the "{keyword}" category. Make it engaging, informative, conversion-optimized, and inspirational. Focus on how this product will transform the customer's life or solve their specific problems.
 
 Output only the HTML content without any additional explanation or markdown formatting.
 """
+    
     return prompt
 
 # Generate description with OpenAI
-def generate_with_openai(keyword, model="gpt-4o"):
+def generate_with_openai(keyword, model="gpt-4o", language="English"):
+    if not OPENAI_AVAILABLE:
+        return "Error: OpenAI library not available. Please install: pip install openai"
+    
     try:
         client = openai.OpenAI(api_key=st.session_state.get('openai_api_key'))
-        prompt = get_shopify_prompt(keyword)
+        prompt = get_shopify_prompt(keyword, language)
+        
+        system_message = "You are an expert e-commerce copywriter specializing in Shopify product descriptions. Always respond with clean HTML code that follows Shopify best practices."
+        if language == "Türkçe":
+            system_message = "Sen Shopify ürün açıklamaları konusunda uzman bir e-ticaret metin yazarısın. Her zaman Shopify'ın en iyi uygulamalarını takip eden temiz HTML kodu ile yanıtla."
         
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "You are an expert e-commerce copywriter specializing in Shopify product descriptions. Always respond with clean HTML code that follows Shopify best practices."},
+                {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=2000,
@@ -111,10 +230,13 @@ def generate_with_openai(keyword, model="gpt-4o"):
         return f"Error generating with OpenAI: {str(e)}"
 
 # Generate description with Gemini
-def generate_with_gemini(keyword, model="gemini-1.5-flash"):
+def generate_with_gemini(keyword, model="gemini-1.5-flash", language="English"):
+    if not GEMINI_AVAILABLE:
+        return "Error: Google Generative AI library not available. Please install: pip install google-generativeai"
+    
     try:
         model_instance = genai.GenerativeModel(model)
-        prompt = get_shopify_prompt(keyword)
+        prompt = get_shopify_prompt(keyword, language)
         
         response = model_instance.generate_content(prompt)
         return response.text.strip()
@@ -194,9 +316,19 @@ def main():
         st.header("🔧 API Yapılandırması")
         
         # API Selection
+        available_providers = []
+        if OPENAI_AVAILABLE:
+            available_providers.append("OpenAI")
+        if GEMINI_AVAILABLE:
+            available_providers.append("Google Gemini")
+        
+        if not available_providers:
+            st.error("❌ Hiçbir AI kütüphanesi bulunamadı! Lütfen gerekli kütüphaneleri yükleyin.")
+            return
+        
         api_provider = st.selectbox(
             "AI Sağlayıcısını Seçin:",
-            ["OpenAI", "Google Gemini"],
+            available_providers,
             index=0
         )
         
@@ -235,10 +367,14 @@ def main():
             st.session_state['gemini_model'] = gemini_model
         
         # Configuration status
-        if api_provider == "OpenAI" and st.session_state.get('openai_api_key'):
+        if api_provider == "OpenAI" and st.session_state.get('openai_api_key') and OPENAI_AVAILABLE:
             st.success("✅ OpenAI API yapılandırıldı")
-        elif api_provider == "Google Gemini" and st.session_state.get('gemini_api_key'):
+        elif api_provider == "Google Gemini" and st.session_state.get('gemini_api_key') and GEMINI_AVAILABLE:
             st.success("✅ Gemini API yapılandırıldı")
+        elif api_provider == "OpenAI" and not OPENAI_AVAILABLE:
+            st.error("❌ OpenAI kütüphanesi bulunamadı")
+        elif api_provider == "Google Gemini" and not GEMINI_AVAILABLE:
+            st.error("❌ Gemini kütüphanesi bulunamadı")
         else:
             st.warning("⚠️ Lütfen API anahtarınızı yapılandırın")
         
@@ -259,6 +395,14 @@ def main():
     with col1:
         st.header("📝 Ürün Bilgileri")
         
+        # Language selection
+        output_language = st.selectbox(
+            "Çıktı Dili:",
+            ["English", "Türkçe"],
+            index=0,
+            help="Ürün açıklamasının hangi dilde oluşturulacağını seçin"
+        )
+        
         # Keyword input
         keyword = st.text_input(
             "Ürün Anahtar Kelimesi:",
@@ -271,8 +415,8 @@ def main():
             "🚀 Açıklama Oluştur",
             type="primary",
             disabled=not keyword or not (
-                (api_provider == "OpenAI" and st.session_state.get('openai_api_key')) or
-                (api_provider == "Google Gemini" and st.session_state.get('gemini_api_key'))
+                (api_provider == "OpenAI" and st.session_state.get('openai_api_key') and OPENAI_AVAILABLE) or
+                (api_provider == "Google Gemini" and st.session_state.get('gemini_api_key') and GEMINI_AVAILABLE)
             )
         )
         
@@ -283,7 +427,9 @@ def main():
                 return
             
             # Configure APIs
-            configure_apis()
+            if not configure_apis():
+                st.error("❌ API yapılandırması başarısız!")
+                return
             
             # Progress bar
             progress_bar = st.progress(0)
@@ -296,19 +442,23 @@ def main():
                 # Generate description based on selected provider
                 if api_provider == "OpenAI":
                     progress_bar.progress(50)
-                    result = generate_with_openai(keyword, st.session_state.get('openai_model', 'gpt-4o'))
+                    result = generate_with_openai(keyword, st.session_state.get('openai_model', 'gpt-4o'), output_language)
                 else:
                     progress_bar.progress(50)
-                    result = generate_with_gemini(keyword, st.session_state.get('gemini_model', 'gemini-1.5-flash'))
+                    result = generate_with_gemini(keyword, st.session_state.get('gemini_model', 'gemini-1.5-flash'), output_language)
                 
                 progress_bar.progress(75)
                 
                 if result and not result.startswith("Error"):
                     st.session_state['generated_description'] = result
                     st.session_state['current_keyword'] = keyword
+                    st.session_state['selected_language'] = output_language
                     progress_bar.progress(100)
                     status_text.empty()
-                    st.success("✅ Açıklama başarıyla oluşturuldu!")
+                    if output_language == "Türkçe":
+                        st.success("✅ Açıklama başarıyla oluşturuldu!")
+                    else:
+                        st.success("✅ Description generated successfully!")
                 else:
                     st.error(f"❌ {result}")
                     
@@ -325,6 +475,13 @@ def main():
         if 'generated_description' in st.session_state:
             description = st.session_state['generated_description']
             keyword_used = st.session_state.get('current_keyword', 'ürün')
+            selected_language = st.session_state.get('selected_language', 'English')
+            
+            # Show language indicator
+            if selected_language == "Türkçe":
+                st.info(f"🇹🇷 Türkçe açıklama oluşturuldu: {keyword_used}")
+            else:
+                st.info(f"🇺🇸 English description generated: {keyword_used}")
             
             # Display tabs
             tab1, tab2, tab3 = st.tabs(["📝 Düzenle", "👁️ Önizleme", "📋 Kopyala"])
@@ -362,7 +519,10 @@ def main():
                 st.code(description, language='html')
                 
                 # Download functionality
-                filename = f"shopify_aciklama_{keyword_used.replace(' ', '_')}.html"
+                if selected_language == "Türkçe":
+                    filename = f"shopify_aciklama_{keyword_used.replace(' ', '_')}_turkce.html"
+                else:
+                    filename = f"shopify_description_{keyword_used.replace(' ', '_')}_english.html"
                 create_download_link(description, filename)
                 
                 # Copy to clipboard info

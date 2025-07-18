@@ -13,14 +13,30 @@ Bu uygulama, Shopify mağazaları için AI destekli ürün açıklamaları oluş
 
 ## Kurulum
 
+### Yerel Kurulum:
 1. **Gerekli paketleri yükleyin:**
 ```bash
-pip install streamlit openai google-generativeai python-dotenv
+pip install -r requirements.txt
 ```
 
 2. **API anahtarlarınızı yapılandırın:**
    - `.env.example` dosyasını `.env` olarak kopyalayın
    - API anahtarlarınızı ekleyin (isteğe bağlı - uygulama içinde de girebilirsiniz)
+
+### Streamlit Cloud Deployment:
+1. Bu repository'yi fork edin
+2. Streamlit Cloud'da yeni uygulama oluşturun
+3. Repository'yi bağlayın
+4. `requirements.txt` otomatik olarak tanınacak
+5. Deploy edin
+
+## requirements.txt
+```
+streamlit>=1.30.0
+openai>=1.60.0
+google-generativeai>=0.8.0
+python-dotenv>=0.21.0
+```
 
 ## Kullanım
 
