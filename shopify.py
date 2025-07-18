@@ -80,6 +80,9 @@ Guidelines:
 - Be specific and descriptive - avoid generic statements
 - Help customers envision their success journey with your product
 - Create emotional connection while providing practical value
+- ALWAYS include realistic product dimensions in both inches and centimeters
+- Present dimensions in a clear, organized list format for easy scanning
+- Make dimensions appropriate for the product category and realistic
 
 Write the description as if you're selling a premium quality product in the "{keyword}" category. Make it engaging, informative, conversion-optimized, and inspirational. Focus on how this product will transform the customer's life or solve their specific problems.
 
@@ -122,7 +125,7 @@ def generate_with_gemini(keyword, model="gemini-1.5-flash"):
 def create_download_link(content, filename):
     """Create a download link for the generated content"""
     return st.download_button(
-        label="📥 Download HTML File",
+        label="📥 HTML Dosyasını İndir",
         data=content,
         file_name=filename,
         mime="text/html",
@@ -132,7 +135,7 @@ def create_download_link(content, filename):
 # Main Streamlit app
 def main():
     st.set_page_config(
-        page_title="Shopify Description Generator",
+        page_title="Shopify Ürün Açıklama Üreticisi",
         page_icon="🛍️",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -181,29 +184,29 @@ def main():
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🛍️ Shopify Product Description Generator</h1>
-        <p>Generate compelling, SEO-optimized product descriptions for your Shopify store</p>
+        <h1>🛍️ Shopify Ürün Açıklama Üreticisi</h1>
+        <p>Shopify mağazanız için etkileyici, SEO optimize edilmiş ürün açıklamaları oluşturun</p>
     </div>
     """, unsafe_allow_html=True)
     
     # Sidebar for API configuration
     with st.sidebar:
-        st.header("🔧 API Configuration")
+        st.header("🔧 API Yapılandırması")
         
         # API Selection
         api_provider = st.selectbox(
-            "Choose AI Provider:",
+            "AI Sağlayıcısını Seçin:",
             ["OpenAI", "Google Gemini"],
             index=0
         )
         
         if api_provider == "OpenAI":
-            st.markdown("**OpenAI Settings**")
+            st.markdown("**OpenAI Ayarları**")
             openai_api_key = st.text_input(
-                "OpenAI API Key:",
+                "OpenAI API Anahtarı:",
                 type="password",
                 value=st.session_state.get('openai_api_key', ''),
-                help="Enter your OpenAI API key"
+                help="OpenAI API anahtarınızı girin"
             )
             st.session_state['openai_api_key'] = openai_api_key
             
@@ -215,12 +218,12 @@ def main():
             st.session_state['openai_model'] = openai_model
             
         else:  # Gemini
-            st.markdown("**Google Gemini Settings**")
+            st.markdown("**Google Gemini Ayarları**")
             gemini_api_key = st.text_input(
-                "Gemini API Key:",
+                "Gemini API Anahtarı:",
                 type="password",
                 value=st.session_state.get('gemini_api_key', ''),
-                help="Enter your Google Gemini API key"
+                help="Google Gemini API anahtarınızı girin"
             )
             st.session_state['gemini_api_key'] = gemini_api_key
             
@@ -233,39 +236,39 @@ def main():
         
         # Configuration status
         if api_provider == "OpenAI" and st.session_state.get('openai_api_key'):
-            st.success("✅ OpenAI API configured")
+            st.success("✅ OpenAI API yapılandırıldı")
         elif api_provider == "Google Gemini" and st.session_state.get('gemini_api_key'):
-            st.success("✅ Gemini API configured")
+            st.success("✅ Gemini API yapılandırıldı")
         else:
-            st.warning("⚠️ Please configure your API key")
+            st.warning("⚠️ Lütfen API anahtarınızı yapılandırın")
         
         st.markdown("---")
         
         # Tips section
         st.markdown("""
-        **💡 Tips for better results:**
-        - Use specific product keywords
-        - Include brand names when relevant
-        - Be descriptive (e.g., "waterproof hiking boots" vs "boots")
-        - Consider your target audience
+        **💡 Daha iyi sonuçlar için ipuçları:**
+        - Spesifik ürün anahtar kelimeleri kullanın
+        - Marka adlarını dahil edin
+        - Açıklayıcı olun (örn: "su geçirmez yürüyüş ayakkabısı" vs "ayakkabı")
+        - Hedef kitlenizi düşünün
         """)
     
     # Main content area
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.header("📝 Product Information")
+        st.header("📝 Ürün Bilgileri")
         
         # Keyword input
         keyword = st.text_input(
-            "Product Keyword:",
-            placeholder="e.g., wireless bluetooth headphones, organic skincare serum, vintage leather jacket",
-            help="Enter the main keyword or product type you want to create a description for"
+            "Ürün Anahtar Kelimesi:",
+            placeholder="örn: kablosuz bluetooth kulaklık, organik cilt bakım serumu, vintage deri ceket",
+            help="Açıklama oluşturmak istediğiniz ana anahtar kelime veya ürün türünü girin"
         )
         
         # Generate button
         generate_button = st.button(
-            "🚀 Generate Description",
+            "🚀 Açıklama Oluştur",
             type="primary",
             disabled=not keyword or not (
                 (api_provider == "OpenAI" and st.session_state.get('openai_api_key')) or
@@ -276,7 +279,7 @@ def main():
         # Progress and generation
         if generate_button:
             if not keyword.strip():
-                st.error("Please enter a product keyword.")
+                st.error("Lütfen bir ürün anahtar kelimesi girin.")
                 return
             
             # Configure APIs
@@ -287,7 +290,7 @@ def main():
             status_text = st.empty()
             
             try:
-                status_text.text("🔄 Generating product description...")
+                status_text.text("🔄 Ürün açıklaması oluşturuluyor...")
                 progress_bar.progress(25)
                 
                 # Generate description based on selected provider
@@ -305,45 +308,45 @@ def main():
                     st.session_state['current_keyword'] = keyword
                     progress_bar.progress(100)
                     status_text.empty()
-                    st.success("✅ Description generated successfully!")
+                    st.success("✅ Açıklama başarıyla oluşturuldu!")
                 else:
                     st.error(f"❌ {result}")
                     
                 progress_bar.empty()
                 
             except Exception as e:
-                st.error(f"❌ An error occurred: {str(e)}")
+                st.error(f"❌ Bir hata oluştu: {str(e)}")
                 progress_bar.empty()
                 status_text.empty()
     
     with col2:
-        st.header("📊 Generated Description")
+        st.header("📊 Oluşturulan Açıklama")
         
         if 'generated_description' in st.session_state:
             description = st.session_state['generated_description']
-            keyword_used = st.session_state.get('current_keyword', 'product')
+            keyword_used = st.session_state.get('current_keyword', 'ürün')
             
             # Display tabs
-            tab1, tab2, tab3 = st.tabs(["📝 Edit", "👁️ Preview", "📋 Copy"])
+            tab1, tab2, tab3 = st.tabs(["📝 Düzenle", "👁️ Önizleme", "📋 Kopyala"])
             
             with tab1:
                 # Editable text area
                 edited_description = st.text_area(
-                    "Edit your description:",
+                    "Açıklamanızı düzenleyin:",
                     value=description,
                     height=400,
-                    help="You can edit the generated description here"
+                    help="Oluşturulan açıklamayı burada düzenleyebilirsiniz"
                 )
                 
                 # Update button
-                if st.button("💾 Update Description"):
+                if st.button("💾 Açıklamayı Güncelle"):
                     st.session_state['generated_description'] = edited_description
-                    st.success("Description updated!")
+                    st.success("Açıklama güncellendi!")
                     st.rerun()
             
             with tab2:
                 # HTML preview
-                st.markdown("**HTML Preview:**")
+                st.markdown("**HTML Önizlemesi:**")
                 try:
                     st.components.v1.html(
                         f"<div style='padding: 20px; border: 1px solid #ddd; border-radius: 5px;'>{description}</div>",
@@ -355,25 +358,25 @@ def main():
             
             with tab3:
                 # Copy section
-                st.markdown("**Copy HTML Code:**")
+                st.markdown("**HTML Kodunu Kopyala:**")
                 st.code(description, language='html')
                 
                 # Download functionality
-                filename = f"shopify_description_{keyword_used.replace(' ', '_')}.html"
+                filename = f"shopify_aciklama_{keyword_used.replace(' ', '_')}.html"
                 create_download_link(description, filename)
                 
                 # Copy to clipboard info
-                st.info("💡 Use Ctrl+C (Cmd+C on Mac) to copy the code above")
+                st.info("💡 Yukarıdaki kodu kopyalamak için Ctrl+C (Mac'te Cmd+C) kullanın")
         
         else:
-            st.info("👆 Enter a keyword and click 'Generate Description' to get started!")
+            st.info("👆 Bir anahtar kelime girin ve başlamak için 'Açıklama Oluştur' butonuna tıklayın!")
     
     # Footer
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: #666; font-size: 0.9em;'>
-        <p>🛍️ Shopify Product Description Generator | Powered by AI | Built with Streamlit</p>
-        <p>Generate compelling, SEO-optimized descriptions for your e-commerce products</p>
+        <p>🛍️ Shopify Ürün Açıklama Üreticisi | Powered by Mahir Yusuf Acan | Streamlit ile Geliştirildi</p>
+        <p>E-ticaret ürünleriniz için etkileyici, SEO optimize edilmiş açıklamalar oluşturun</p>
     </div>
     """, unsafe_allow_html=True)
 
