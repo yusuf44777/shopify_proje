@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import time
 import io
+import subprocess
 from dotenv import load_dotenv
 
 # Try to import AI libraries with error handling
@@ -10,21 +11,29 @@ try:
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
-    st.error("⚠️ OpenAI library not found. Please install: pip install openai")
 
 try:
     import google.generativeai as genai
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
-    st.error("⚠️ Google Generative AI library not found. Please install: pip install google-generativeai")
+
+# Check if Ollama is available
+def check_ollama():
+    try:
+        result = subprocess.run(['ollama', '--version'], capture_output=True, text=True)
+        return result.returncode == 0
+    except FileNotFoundError:
+        return False
+
+OLLAMA_AVAILABLE = check_ollama()
 
 # Load environment variables
 load_dotenv()
 
 # Configure APIs
 def configure_apis():
-    if not OPENAI_AVAILABLE and not GEMINI_AVAILABLE:
+    if not OPENAI_AVAILABLE and not GEMINI_AVAILABLE and not OLLAMA_AVAILABLE:
         st.error("❌ Hiçbir AI kütüphanesi bulunamadı!")
         return False
     
@@ -38,6 +47,26 @@ def configure_apis():
         genai.configure(api_key=gemini_api_key)
     
     return True
+
+# Get available Ollama models
+def get_ollama_models():
+    if not OLLAMA_AVAILABLE:
+        return []
+    
+    try:
+        result = subprocess.run(['ollama', 'list'], capture_output=True, text=True)
+        if result.returncode == 0:
+            lines = result.stdout.strip().split('\n')[1:]  # Skip header
+            models = []
+            for line in lines:
+                if line.strip():
+                    model_name = line.split()[0]  # İlk sütun model adı
+                    models.append(model_name)
+            return models
+        else:
+            return []
+    except:
+        return []
 
 # Shopify-optimized prompt for product description generation
 def get_shopify_prompt(keyword, language="English"):
@@ -67,139 +96,94 @@ Gereksinimler:
 1. Shopify'a uygun HTML formatında yaz
 2. Uygun başlık hiyerarşisi kullan (h1, h2, h3, h4)
 3. Eyleme geçmeye ilham veren etkileyici ürün özellik ve faydaları ekle
-4. Duygusal tetikleyicilerle ikna edici eylem çağrısı öğeleri ekle
-5. Doğal anahtar kelime entegrasyonu ile arama motorları için optimize et (ANAHTAR KELİME DOLDURMA YOK)
-6. Shopify'ın en iyi uygulamalarını takip et
-7. Uygun olduğunda sosyal kanıt öğeleri ve güven sinyalleri ekle
-8. Net değer önermeleriyle dönüşüm odaklı ve müşteri merkezli yap
+4. Call-to-action ve satın alma motivasyonu dahil et
+5. SEO açısından anahtar kelimeyi doğal olarak entegre et
 
-Yanıtını şu yapıyla oluştur:
-- Ürün Başlığı (h1) - İlham verici ve spesifik yap
-- Etkileyici Açılış Bildirimi (p) - Müşteriyi hemen yakala
-- Ana Özellikler ve Faydalar (h2) - Dönüşüm ve sonuçlara odaklan
-- Ürün Detayları (h3) - Spesifik ve açıklayıcı ol
-- Ürün Boyutları (h3) - HER ZAMAN hem inç hem santimetre cinsinden gerçekçi boyutlar ekle
-  * TABLO formatında düzenle, liste değil
-  * Örnek format:
-    <table style="width:100%; border-collapse: collapse; margin: 10px 0;">
-    <tr style="background-color: #f8f9fa;">
-      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Boyut</th>
-      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">İnç</th>
-      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Santimetre</th>
-    </tr>
-    <tr>
-      <td style="border: 1px solid #ddd; padding: 8px;">Uzunluk</td>
-      <td style="border: 1px solid #ddd; padding: 8px;">12"</td>
-      <td style="border: 1px solid #ddd; padding: 8px;">30,5 cm</td>
-    </tr>
-    </table>
-  * Uzunluk, Genişlik, Yükseklik, Derinlik, Çap gibi ilgili boyutları ekle
-  * Ürün kategorisi için gerçekçi boyutlar yap
-- Teknik Özellikler (h4 gerekirse) - İlgili teknik detayları ekle
-- Bakım Talimatları veya Kullanım Kılavuzları (h3) - Pratik katma değer bilgisi
-- Bu Ürünü Neden Seçmelisiniz (h2) - Farklılaşma ve benzersiz değer
-- Müşteri Faydaları ve Yaşam Tarzı Etkisi (h3) - Başarı resmini çiz
-- Eylem Çağrısı Bölümü - Aciliyet ve arzu yarat
+FORMAT:
+```html
+<h1>[Etkileyici Ana Başlık]</h1>
+<p>[Motivasyonel açılış paragrafı]</p>
 
-Kılavuzlar:
-- Eyleme geçmeye ilham veren duygusal tetikleyiciler ve güç kelimeleri kullan
-- Sadece özellikler değil faydalar ve dönüşüme odaklan
-- Müşterilerin ilişki kurabileceği yaşam tarzı ve kullanım senaryolarını ekle
-- Madde işaretleri ve kısa, etkili paragraflarla taranabilir yap
-- Net hiyerarşiyle mobil okuma için optimize et
-- Güven sinyalleri, garantiler ve pratik teşvikler ekle (ücretsiz kargo, garantiler vb.)
-- Dönüşümleri artıran ve arzu yaratan ikna edici dil kullan
-- Spesifik ve açıklayıcı ol - genel ifadelerden kaçın
-- Müşterilerin ürününle başarı yolculuklarını hayal etmelerine yardım et
-- Pratik değer verirken duygusal bağlantı kur
-- HER ZAMAN hem inç hem santimetre cinsinden gerçekçi ürün boyutları ekle
-- Boyutları kolay tarama için düzenli TABLO formatında sun, liste değil
-- Boyutları ürün kategorisine uygun ve gerçekçi yap
+<h2>🎯 Neden Bu Ürünü Tercih Etmelisiniz?</h2>
+<ul>
+<li>[Ana fayda 1]</li>
+<li>[Ana fayda 2]</li>
+<li>[Ana fayda 3]</li>
+</ul>
 
-"{keyword}" kategorisinde premium kaliteli bir ürün satıyormuş gibi açıklama yaz. Etkileyici, bilgilendirici, dönüşüm optimize edilmiş ve ilham verici yap. Bu ürünün müşterinin hayatını nasıl dönüştüreceğine veya spesifik problemlerini nasıl çözeceğine odaklan.
+<h2>⭐ Öne Çıkan Özellikler</h2>
+<ul>
+<li>[Özellik 1 - Spesifik detay]</li>
+<li>[Özellik 2 - Spesifik detay]</li>
+<li>[Özellik 3 - Spesifik detay]</li>
+</ul>
 
-Sadece HTML içeriğini çıktı ver, ek açıklama veya markdown formatlaması olmadan.
+<h2>💫 Müşteri Deneyimi</h2>
+<p>[Ürünü kullanma deneyimi ve sonuçları]</p>
+
+<h2>🚀 Hemen Sipariş Verin!</h2>
+<p>[Satın alma motivasyonu ve aciliyet yaratma]</p>
+```
+
+Lütfen bu formata uygun, etkileyici ve profesyonel bir açıklama oluştur.
 """
-    else:  # English
+    else:
         prompt = f"""
-You are an expert e-commerce copywriter specializing in Shopify product descriptions. Create a comprehensive, SEO-optimized product description for a product related to "{keyword}".
+You are an expert Shopify product description writer specializing in high-converting e-commerce copy. Create a comprehensive, SEO-optimized English product description for a product related to "{keyword}".
 
 CRITICAL WRITING PRINCIPLES (Based on High-Converting Examples):
 1. INSPIRE & MOTIVATE - Don't just describe, help customers envision their success journey
-2. BE SPECIFIC & DESCRIPTIVE - Avoid vague language, use precise details that matter
-3. FOCUS ON CUSTOMER BENEFITS - What will this product do for their life?
+2. BE SPECIFIC & DESCRIPTIVE - Avoid vague language, use concrete details that matter
+3. FOCUS ON CUSTOMER BENEFITS - What will this product add to their lives?
 4. AVOID KEYWORD STUFFING - Use natural, contextual keyword integration
 5. CREATE EMOTIONAL CONNECTION - Use language that resonates with target audience
-6. INCLUDE PRACTICAL INCENTIVES - Mention shipping, guarantees, or special offers when relevant
+6. INCLUDE PRACTICAL INCENTIVES - Mention shipping, warranties, or special offers
 
-EXAMPLES OF EFFECTIVE VS INEFFECTIVE APPROACHES:
-✅ GOOD: "Elevate your fitness journey with top-tier equipment designed for lasting results"
+EFFECTIVE vs INEFFECTIVE APPROACH EXAMPLES:
+✅ GOOD: "Elevate your fitness journey with premium equipment designed for lasting results"
 ❌ BAD: "Buy fitness equipment for home and gym use"
 
 ✅ GOOD: "Step into sustainable style with eco-friendly clothing that lets you dress in harmony with nature"
-❌ BAD: "Eco-friendly clothing available. Browse our sustainable products"
+❌ BAD: "Eco-friendly clothes available. Check out our sustainable products"
 
-✅ GOOD: "Self-sharpening mechanical pencil that autocorrects your penmanship in real time"
+✅ GOOD: "Self-correcting mechanical pencil that fixes your writing in real-time"
 ❌ BAD: "Mechanical pencil"
 
 Requirements:
-1. Write in HTML format suitable for Shopify
+1. Write in Shopify-compatible HTML format
 2. Use proper heading hierarchy (h1, h2, h3, h4)
 3. Include compelling product features and benefits that inspire action
-4. Add persuasive call-to-action elements with emotional triggers
-5. Optimize for search engines with natural keyword integration (NO keyword stuffing)
-6. Follow Shopify's best practices for product descriptions
-7. Include social proof elements and trust signals when appropriate
-8. Make it conversion-focused and customer-centric with clear value propositions
+4. Include call-to-action and purchase motivation
+5. Integrate the keyword naturally for SEO
 
-Structure your response with:
-- Product Title (h1) - Make it inspiring and specific
-- Compelling Opening Statement (p) - Hook the customer immediately
-- Key Features & Benefits (h2) - Focus on transformation and results
-- Product Details (h3) - Be specific and descriptive
-- Product Dimensions (h3) - ALWAYS include realistic dimensions in BOTH inches and centimeters
-  * Format as HTML TABLE, not list
-  * Example format:
-    <table style="width:100%; border-collapse: collapse; margin: 10px 0;">
-    <tr style="background-color: #f8f9fa;">
-      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Dimension</th>
-      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Inches</th>
-      <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Centimeters</th>
-    </tr>
-    <tr>
-      <td style="border: 1px solid #ddd; padding: 8px;">Length</td>
-      <td style="border: 1px solid #ddd; padding: 8px;">12"</td>
-      <td style="border: 1px solid #ddd; padding: 8px;">30.5 cm</td>
-    </tr>
-    </table>
-  * Include relevant dimensions like: Length, Width, Height, Depth, Diameter, etc.
-  * Make dimensions realistic for the product category
-- Specifications (h4 if needed) - Include relevant technical details
-- Care Instructions or Usage Guidelines (h3) - Practical value-add information
-- Why Choose This Product (h2) - Differentiation and unique value
-- Customer Benefits & Lifestyle Impact (h3) - Paint the success picture
-- Call-to-Action Section - Create urgency and desire
+FORMAT:
+```html
+<h1>[Compelling Main Title]</h1>
+<p>[Motivational opening paragraph]</p>
 
-Guidelines:
-- Use emotional triggers and power words that inspire action
-- Focus on benefits and transformation over mere features
-- Include lifestyle and usage scenarios that customers can relate to
-- Make it scannable with bullet points and short, impactful paragraphs
-- Optimize for mobile reading with clear hierarchy
-- Include trust signals, guarantees, and practical incentives (free shipping, warranties, etc.)
-- Use persuasive language that drives conversions and builds desire
-- Be specific and descriptive - avoid generic statements
-- Help customers envision their success journey with your product
-- Create emotional connection while providing practical value
-- ALWAYS include realistic product dimensions in both inches and centimeters
-- Present dimensions in a clear, organized TABLE format for easy scanning, not lists
-- Make dimensions appropriate for the product category and realistic
+<h2>🎯 Why Choose This Product?</h2>
+<ul>
+<li>[Main benefit 1]</li>
+<li>[Main benefit 2]</li>
+<li>[Main benefit 3]</li>
+</ul>
 
-Write the description as if you're selling a premium quality product in the "{keyword}" category. Make it engaging, informative, conversion-optimized, and inspirational. Focus on how this product will transform the customer's life or solve their specific problems.
+<h2>⭐ Key Features</h2>
+<ul>
+<li>[Feature 1 - Specific detail]</li>
+<li>[Feature 2 - Specific detail]</li>
+<li>[Feature 3 - Specific detail]</li>
+</ul>
 
-Output only the HTML content without any additional explanation or markdown formatting.
+<h2>💫 Customer Experience</h2>
+<p>[Product usage experience and results]</p>
+
+<h2>🚀 Order Now!</h2>
+<p>[Purchase motivation and urgency creation]</p>
+```
+
+Please create an engaging and professional description following this format.
 """
-    
     return prompt
 
 # Generate description with OpenAI
@@ -207,18 +191,16 @@ def generate_with_openai(keyword, model="gpt-4o", language="English"):
     if not OPENAI_AVAILABLE:
         return "Error: OpenAI library not available. Please install: pip install openai"
     
+    if not st.session_state.get('openai_api_key'):
+        return "Error: OpenAI API key not provided."
+    
     try:
-        client = openai.OpenAI(api_key=st.session_state.get('openai_api_key'))
         prompt = get_shopify_prompt(keyword, language)
         
-        system_message = "You are an expert e-commerce copywriter specializing in Shopify product descriptions. Always respond with clean HTML code that follows Shopify best practices."
-        if language == "Türkçe":
-            system_message = "Sen Shopify ürün açıklamaları konusunda uzman bir e-ticaret metin yazarısın. Her zaman Shopify'ın en iyi uygulamalarını takip eden temiz HTML kodu ile yanıtla."
-        
-        response = client.chat.completions.create(
+        response = openai.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": system_message},
+                {"role": "system", "content": "You are an expert Shopify product description writer who creates compelling, SEO-optimized product descriptions that drive conversions."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=2000,
@@ -243,84 +225,151 @@ def generate_with_gemini(keyword, model="gemini-1.5-flash", language="English"):
     except Exception as e:
         return f"Error generating with Gemini: {str(e)}"
 
-# Download HTML file
-def create_download_link(content, filename):
-    """Create a download link for the generated content"""
-    return st.download_button(
-        label="📥 HTML Dosyasını İndir",
-        data=content,
-        file_name=filename,
-        mime="text/html",
-        key="download_btn"
+# Generate description with Ollama
+def generate_with_ollama(keyword, model="llama2", language="English"):
+    if not OLLAMA_AVAILABLE:
+        return "Error: Ollama not available. Please install Ollama first."
+    
+    try:
+        prompt = get_shopify_prompt(keyword, language)
+        
+        # Ollama ile yanıt oluştur
+        cmd = ['ollama', 'run', model, prompt]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+        else:
+            return f"Error: {result.stderr if result.stderr else 'Model yanıt veremedi'}"
+        
+    except subprocess.TimeoutExpired:
+        return "Error: Timeout - işlem çok uzun sürdü"
+    except Exception as e:
+        return f"Error generating with Ollama: {str(e)}"
+
+# Enhanced word counter function
+def enhanced_word_count(text):
+    # Remove HTML tags for accurate word counting
+    import re
+    clean_text = re.sub(r'<[^>]+>', '', text)
+    
+    words = clean_text.split()
+    return len(words)
+
+# Enhanced character counter function  
+def enhanced_char_count(text):
+    # Remove HTML tags for accurate character counting
+    import re
+    clean_text = re.sub(r'<[^>]+>', '', text)
+    
+    return len(clean_text)
+
+# Copy to clipboard function
+def copy_to_clipboard(text):
+    """JavaScript for copying text to clipboard"""
+    escaped_text = text.replace('`', '\\`')
+    st.markdown(
+        f"""
+        <script>
+        function copyToClipboard() {{
+            const textArea = document.createElement('textarea');
+            textArea.value = `{escaped_text}`;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert('Metin panoya kopyalandı!');
+        }}
+        </script>
+        """,
+        unsafe_allow_html=True
     )
 
-# Main Streamlit app
 def main():
+    # Set page config
     st.set_page_config(
-        page_title="Shopify Ürün Açıklama Üreticisi",
+        page_title="🛍️ Shopify GPT - Ürün Açıklama Üreticisi",
         page_icon="🛍️",
         layout="wide",
         initial_sidebar_state="expanded"
     )
     
-    # Custom CSS for better styling
+    # Custom CSS for better UI
     st.markdown("""
     <style>
-    .main-header {
+    .main-title {
+        color: #1e88e5;
         text-align: center;
-        padding: 2rem 0;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px;
+        font-size: 3rem;
         margin-bottom: 2rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
     }
-    .api-config {
-        background-color: #f0f2f6;
-        padding: 1rem;
+    .subtitle {
+        text-align: center;
+        color: #666;
+        font-size: 1.2rem;
+        margin-bottom: 3rem;
+    }
+    .feature-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
         border-radius: 10px;
-        margin-bottom: 1rem;
+        color: white;
+        margin: 10px 0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .stats-box {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #1e88e5;
+        margin: 10px 0;
     }
     .result-container {
-        background-color: #ffffff;
-        padding: 1.5rem;
+        background: #ffffff;
+        padding: 20px;
         border-radius: 10px;
-        border: 1px solid #e6e6e6;
-        margin-top: 1rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin: 20px 0;
     }
-    .stTextArea textarea {
-        background-color: #f8f9fa;
-        border: 2px solid #e9ecef;
-        border-radius: 5px;
+    .copy-button {
+        background: linear-gradient(45deg, #FE6B8B 30%, #FF8E53 90%);
+        border: none;
+        border-radius: 3px;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        transition-duration: 0.4s;
     }
-    .success-message {
-        background-color: #d4edda;
-        color: #155724;
-        padding: 1rem;
-        border-radius: 5px;
-        border: 1px solid #c3e6cb;
-        margin: 1rem 0;
+    .copy-button:hover {
+        box-shadow: 0 12px 16px 0 rgba(0,0,0,0.24),0 17px 50px 0 rgba(0,0,0,0.19);
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Header
-    st.markdown("""
-    <div class="main-header">
-        <h1>🛍️ Shopify Ürün Açıklama Üreticisi</h1>
-        <p>Shopify mağazanız için etkileyici, SEO optimize edilmiş ürün açıklamaları oluşturun</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Main title and subtitle
+    st.markdown('<h1 class="main-title">🛍️ Shopify GPT</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Yapay Zeka Destekli Ürün Açıklama Üreticisi</p>', unsafe_allow_html=True)
     
-    # Sidebar for API configuration
-    with st.sidebar:
-        st.header("🔧 API Yapılandırması")
+    # Create two columns for better layout
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.header("⚙️ Ayarlar ve Yapılandırma")
         
-        # API Selection
+        # Determine available providers
         available_providers = []
         if OPENAI_AVAILABLE:
             available_providers.append("OpenAI")
         if GEMINI_AVAILABLE:
             available_providers.append("Google Gemini")
+        if OLLAMA_AVAILABLE:
+            available_providers.append("Ollama")
         
         if not available_providers:
             st.error("❌ Hiçbir AI kütüphanesi bulunamadı! Lütfen gerekli kütüphaneleri yükleyin.")
@@ -340,83 +389,102 @@ def main():
                 value=st.session_state.get('openai_api_key', ''),
                 help="OpenAI API anahtarınızı girin"
             )
-            st.session_state['openai_api_key'] = openai_api_key
             
+            if openai_api_key:
+                st.session_state['openai_api_key'] = openai_api_key
+                
             openai_model = st.selectbox(
-                "Model:",
-                ["gpt-4o", "gpt-4o-mini", "gpt-4", "gpt-3.5-turbo"],
-                index=0
+                "OpenAI Model:",
+                ["gpt-4o", "gpt-4", "gpt-3.5-turbo"],
+                index=0,
+                help="Kullanmak istediğiniz OpenAI modelini seçin"
             )
             st.session_state['openai_model'] = openai_model
             
-        else:  # Gemini
+        elif api_provider == "Google Gemini":
             st.markdown("**Google Gemini Ayarları**")
             gemini_api_key = st.text_input(
                 "Gemini API Anahtarı:",
                 type="password",
                 value=st.session_state.get('gemini_api_key', ''),
-                help="Google Gemini API anahtarınızı girin"
+                help="Google AI Studio'dan aldığınız API anahtarını girin"
             )
-            st.session_state['gemini_api_key'] = gemini_api_key
             
+            if gemini_api_key:
+                st.session_state['gemini_api_key'] = gemini_api_key
+                
             gemini_model = st.selectbox(
-                "Model:",
-                ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"],
-                index=0
+                "Gemini Model:",
+                ["gemini-1.5-flash", "gemini-1.5-pro"],
+                index=0,
+                help="Kullanmak istediğiniz Gemini modelini seçin"
             )
             st.session_state['gemini_model'] = gemini_model
         
-        # Configuration status
-        if api_provider == "OpenAI" and st.session_state.get('openai_api_key') and OPENAI_AVAILABLE:
-            st.success("✅ OpenAI API yapılandırıldı")
-        elif api_provider == "Google Gemini" and st.session_state.get('gemini_api_key') and GEMINI_AVAILABLE:
-            st.success("✅ Gemini API yapılandırıldı")
-        elif api_provider == "OpenAI" and not OPENAI_AVAILABLE:
-            st.error("❌ OpenAI kütüphanesi bulunamadı")
-        elif api_provider == "Google Gemini" and not GEMINI_AVAILABLE:
-            st.error("❌ Gemini kütüphanesi bulunamadı")
-        else:
-            st.warning("⚠️ Lütfen API anahtarınızı yapılandırın")
+        elif api_provider == "Ollama":
+            st.markdown("**Ollama Ayarları**")
+            ollama_models = get_ollama_models()
+            
+            if ollama_models:
+                selected_ollama_model = st.selectbox(
+                    "Ollama Model:",
+                    ollama_models,
+                    help="Yerel olarak kurulu Ollama modellerinden birini seçin"
+                )
+                st.session_state['ollama_model'] = selected_ollama_model
+                
+                st.success(f"✅ {len(ollama_models)} Ollama modeli bulundu")
+                
+                with st.expander("📋 Mevcut Modeller"):
+                    for model in ollama_models:
+                        st.write(f"• {model}")
+            else:
+                st.error("❌ Hiçbir Ollama modeli bulunamadı!")
+                st.info("Model yüklemek için terminalde şu komutu çalıştırın: `ollama pull llama2`")
         
+        # API status indicator
         st.markdown("---")
+        st.subheader("📊 API Durumu")
         
-        # Tips section
-        st.markdown("""
-        **💡 Daha iyi sonuçlar için ipuçları:**
-        - Spesifik ürün anahtar kelimeleri kullanın
-        - Marka adlarını dahil edin
-        - Açıklayıcı olun (örn: "su geçirmez yürüyüş ayakkabısı" vs "ayakkabı")
-        - Hedef kitlenizi düşünün
-        """)
-    
-    # Main content area
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.header("📝 Ürün Bilgileri")
+        if api_provider == "OpenAI" and st.session_state.get('openai_api_key') and OPENAI_AVAILABLE:
+            st.success("✅ OpenAI API hazır")
+        elif api_provider == "Google Gemini" and st.session_state.get('gemini_api_key') and GEMINI_AVAILABLE:
+            st.success("✅ Google Gemini API hazır")
+        elif api_provider == "Ollama" and OLLAMA_AVAILABLE and ollama_models:
+            st.success("✅ Ollama hazır")
+        elif api_provider == "OpenAI" and not OPENAI_AVAILABLE:
+            st.error("❌ OpenAI kütüphanesi yüklü değil")
+        elif api_provider == "Google Gemini" and not GEMINI_AVAILABLE:
+            st.error("❌ Google Generative AI kütüphanesi yüklü değil")
+        elif api_provider == "Ollama" and not OLLAMA_AVAILABLE:
+            st.error("❌ Ollama yüklü değil")
+        else:
+            st.warning("⚠️ API yapılandırması tamamlanmadı")
         
-        # Language selection
-        output_language = st.selectbox(
-            "Çıktı Dili:",
-            ["English", "Türkçe"],
-            index=0,
-            help="Ürün açıklamasının hangi dilde oluşturulacağını seçin"
-        )
+        # Input section
+        st.markdown("---")
+        st.subheader("📝 Ürün Bilgileri")
         
-        # Keyword input
         keyword = st.text_input(
             "Ürün Anahtar Kelimesi:",
-            placeholder="örn: kablosuz bluetooth kulaklık, organik cilt bakım serumu, vintage deri ceket",
-            help="Açıklama oluşturmak istediğiniz ana anahtar kelime veya ürün türünü girin"
+            placeholder="Örn: kablosuz kulaklık, yoga matı, kahve makinesi",
+            help="Ürününüzü en iyi tanımlayan anahtar kelimeyi girin"
+        )
+        
+        output_language = st.selectbox(
+            "Çıktı Dili:",
+            ["Türkçe", "English"],
+            index=0,
+            help="Ürün açıklamasının hangi dilde oluşturulacağını seçin"
         )
         
         # Generate button
         generate_button = st.button(
             "🚀 Açıklama Oluştur",
-            type="primary",
             disabled=not keyword or not (
                 (api_provider == "OpenAI" and st.session_state.get('openai_api_key') and OPENAI_AVAILABLE) or
-                (api_provider == "Google Gemini" and st.session_state.get('gemini_api_key') and GEMINI_AVAILABLE)
+                (api_provider == "Google Gemini" and st.session_state.get('gemini_api_key') and GEMINI_AVAILABLE) or
+                (api_provider == "Ollama" and OLLAMA_AVAILABLE and ollama_models)
             )
         )
         
@@ -443,9 +511,12 @@ def main():
                 if api_provider == "OpenAI":
                     progress_bar.progress(50)
                     result = generate_with_openai(keyword, st.session_state.get('openai_model', 'gpt-4o'), output_language)
-                else:
+                elif api_provider == "Google Gemini":
                     progress_bar.progress(50)
                     result = generate_with_gemini(keyword, st.session_state.get('gemini_model', 'gemini-1.5-flash'), output_language)
+                else:  # Ollama
+                    progress_bar.progress(50)
+                    result = generate_with_ollama(keyword, st.session_state.get('ollama_model', 'llama2'), output_language)
                 
                 progress_bar.progress(75)
                 
@@ -453,6 +524,7 @@ def main():
                     st.session_state['generated_description'] = result
                     st.session_state['current_keyword'] = keyword
                     st.session_state['selected_language'] = output_language
+                    st.session_state['used_api'] = api_provider
                     progress_bar.progress(100)
                     status_text.empty()
                     if output_language == "Türkçe":
@@ -475,70 +547,95 @@ def main():
         if 'generated_description' in st.session_state:
             description = st.session_state['generated_description']
             keyword_used = st.session_state.get('current_keyword', 'ürün')
-            selected_language = st.session_state.get('selected_language', 'English')
+            language_used = st.session_state.get('selected_language', 'Türkçe')
+            api_used = st.session_state.get('used_api', 'Unknown')
             
-            # Show language indicator
-            if selected_language == "Türkçe":
-                st.info(f"🇹🇷 Türkçe açıklama oluşturuldu: {keyword_used}")
-            else:
-                st.info(f"🇺🇸 English description generated: {keyword_used}")
-            
-            # Display tabs
-            tab1, tab2, tab3 = st.tabs(["📝 Düzenle", "👁️ Önizleme", "📋 Kopyala"])
-            
-            with tab1:
-                # Editable text area
-                edited_description = st.text_area(
-                    "Açıklamanızı düzenleyin:",
-                    value=description,
-                    height=400,
-                    help="Oluşturulan açıklamayı burada düzenleyebilirsiniz"
-                )
+            # Display generated content in a nice container
+            with st.container():
+                st.markdown('<div class="result-container">', unsafe_allow_html=True)
                 
-                # Update button
-                if st.button("💾 Açıklamayı Güncelle"):
-                    st.session_state['generated_description'] = edited_description
-                    st.success("Açıklama güncellendi!")
-                    st.rerun()
-            
-            with tab2:
-                # HTML preview
-                st.markdown("**HTML Önizlemesi:**")
-                try:
-                    st.components.v1.html(
-                        f"<div style='padding: 20px; border: 1px solid #ddd; border-radius: 5px;'>{description}</div>",
-                        height=400,
-                        scrolling=True
+                # Meta information
+                col_meta1, col_meta2, col_meta3 = st.columns(3)
+                with col_meta1:
+                    st.metric("🎯 Anahtar Kelime", keyword_used)
+                with col_meta2:
+                    st.metric("🌍 Dil", language_used)
+                with col_meta3:
+                    st.metric("🤖 AI Provider", api_used)
+                
+                st.markdown("---")
+                
+                # Display the generated description
+                st.markdown("### 📝 Ürün Açıklaması")
+                st.markdown(description, unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Analysis section
+                st.markdown("---")
+                st.subheader("📈 İçerik Analizi")
+                
+                col_stats1, col_stats2, col_stats3 = st.columns(3)
+                
+                with col_stats1:
+                    word_count = enhanced_word_count(description)
+                    st.markdown(f'<div class="stats-box"><strong>📊 Kelime Sayısı:</strong><br>{word_count} kelime</div>', unsafe_allow_html=True)
+                
+                with col_stats2:
+                    char_count = enhanced_char_count(description)
+                    st.markdown(f'<div class="stats-box"><strong>🔤 Karakter Sayısı:</strong><br>{char_count} karakter</div>', unsafe_allow_html=True)
+                
+                with col_stats3:
+                    keyword_frequency = description.lower().count(keyword_used.lower())
+                    st.markdown(f'<div class="stats-box"><strong>🎯 Anahtar Kelime Sıklığı:</strong><br>{keyword_frequency} kez</div>', unsafe_allow_html=True)
+                
+                # Copy and download section
+                st.markdown("---")
+                st.subheader("💾 İndirme ve Kopyalama")
+                
+                col_action1, col_action2 = st.columns(2)
+                
+                with col_action1:
+                    # Copy to clipboard button
+                    if st.button("📋 Panoya Kopyala", key="copy_btn"):
+                        st.write("Metin seçili hale getirildi - Ctrl+C ile kopyalayabilirsiniz")
+                        st.code(description, language="html")
+                
+                with col_action2:
+                    # Download as file
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    filename = f"shopify_description_{keyword_used.replace(' ', '_')}_{timestamp}.html"
+                    
+                    st.download_button(
+                        label="💾 HTML Dosyası İndir",
+                        data=description,
+                        file_name=filename,
+                        mime="text/html"
                     )
-                except:
-                    st.code(description, language='html')
-            
-            with tab3:
-                # Copy section
-                st.markdown("**HTML Kodunu Kopyala:**")
-                st.code(description, language='html')
                 
-                # Download functionality
-                if selected_language == "Türkçe":
-                    filename = f"shopify_aciklama_{keyword_used.replace(' ', '_')}_turkce.html"
-                else:
-                    filename = f"shopify_description_{keyword_used.replace(' ', '_')}_english.html"
-                create_download_link(description, filename)
-                
-                # Copy to clipboard info
-                st.info("💡 Yukarıdaki kodu kopyalamak için Ctrl+C (Mac'te Cmd+C) kullanın")
+                # Raw HTML for copying
+                with st.expander("📄 Ham HTML Kodu"):
+                    st.code(description, language="html")
         
         else:
-            st.info("👆 Bir anahtar kelime girin ve başlamak için 'Açıklama Oluştur' butonuna tıklayın!")
-    
-    # Footer
-    st.markdown("---")
-    st.markdown("""
-    <div style='text-align: center; color: #666; font-size: 0.9em;'>
-        <p>🛍️ Shopify Ürün Açıklama Üreticisi | Powered by Mahir Yusuf Acan | Streamlit ile Geliştirildi</p>
-        <p>E-ticaret ürünleriniz için etkileyici, SEO optimize edilmiş açıklamalar oluşturun</p>
-    </div>
-    """, unsafe_allow_html=True)
+            # Default content when no description is generated
+            st.info("👈 Bir ürün açıklaması oluşturmak için sol paneli kullanın")
+            
+            # Show features
+            st.markdown("---")
+            st.subheader("🌟 Özellikler")
+            
+            features = [
+                "🤖 Çoklu AI Desteği (OpenAI, Gemini, Ollama)",
+                "🎯 SEO Optimize Edilmiş İçerik",
+                "🌍 Çok Dilli Destek (Türkçe/İngilizce)",
+                "📊 İçerik Analizi ve İstatistikler",
+                "💾 HTML İndirme ve Kopyalama",
+                "⚡ Hızlı ve Kullanıcı Dostu Arayüz"
+            ]
+            
+            for feature in features:
+                st.markdown(f'<div class="feature-box">{feature}</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

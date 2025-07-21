@@ -5,7 +5,6 @@ import sys
 import time
 from datetime import datetime
 import requests
-import ollama
 
 class OllamaModelTrainer:
     def __init__(self):
@@ -135,23 +134,23 @@ Guidelines:
 
 Respond with compelling, conversion-optimized content that drives sales."""
 
-        modelfile_content = f"""FROM {base_model}
-
-SYSTEM """{system_prompt}"""
-
-PARAMETER temperature 0.7
-PARAMETER top_p 0.9
-PARAMETER top_k 40
-PARAMETER num_predict 2048
-
-TEMPLATE \"\"\"{{ if .System }}<|im_start|>system
+        # F-string yerine format kullanarak triple quote problemini çözelim
+        modelfile_content = f"FROM {base_model}\n\n"
+        modelfile_content += f'SYSTEM """{system_prompt}"""\n\n'
+        modelfile_content += "PARAMETER temperature 0.7\n"
+        modelfile_content += "PARAMETER top_p 0.9\n"
+        modelfile_content += "PARAMETER top_k 40\n"
+        modelfile_content += "PARAMETER num_predict 2048\n\n"
+        
+        template_content = """TEMPLATE \"\"\"{{ if .System }}<|im_start|>system
 {{ .System }}<|im_end|>
 {{ end }}{{ if .Prompt }}<|im_start|>user
 {{ .Prompt }}<|im_end|>
 {{ end }}<|im_start|>assistant
 {{ .Response }}<|im_end|>
-\"\"\"
-"""
+\"\"\""""
+        
+        modelfile_content += template_content
 
         with open(self.modelfile_path, 'w', encoding='utf-8') as f:
             f.write(modelfile_content)
@@ -212,14 +211,19 @@ TEMPLATE \"\"\"{{ if .System }}<|im_start|>system
             for i, prompt in enumerate(test_prompts, 1):
                 print(f"\n📝 Test {i}: {prompt}")
                 
-                # Ollama Python istemcisi kullan
-                response = ollama.chat(model=self.model_name, messages=[
-                    {'role': 'user', 'content': prompt}
-                ])
+                # Subprocess ile ollama çalıştır
+                cmd = ['ollama', 'run', self.model_name, prompt]
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                 
-                print(f"🤖 Yanıt: {response['message']['content'][:200]}...")
+                if result.returncode == 0:
+                    response_text = result.stdout.strip()
+                    print(f"🤖 Yanıt: {response_text[:200]}...")
+                else:
+                    print(f"❌ Test hatası: {result.stderr}")
                 print("-" * 50)
                 
+        except subprocess.TimeoutExpired:
+            print("⏱️ Test timeout - model yanıt vermedi")
         except Exception as e:
             print(f"❌ Model test hatası: {e}")
     
@@ -371,30 +375,35 @@ class ModelEvaluator:
             try:
                 prompt = f"Create a Shopify product description for {test_case['keyword']} in {test_case['category']} category."
                 
-                response = ollama.chat(model=self.model_name, messages=[
-                    {'role': 'user', 'content': prompt}
-                ])
+                # Subprocess ile ollama çalıştır
+                cmd = ['ollama', 'run', self.model_name, prompt]
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                 
-                generated_text = response['message']['content'].lower()
+                if result.returncode == 0:
+                    generated_text = result.stdout.strip().lower()
+                    
+                    # Beklenen elementleri kontrol et
+                    found_elements = []
+                    for element in test_case['expected_elements']:
+                        if element.lower() in generated_text:
+                            found_elements.append(element)
+                    
+                    score = len(found_elements) / len(test_case['expected_elements'])
+                    
+                    results.append({
+                        'test_case': test_case['keyword'],
+                        'category': test_case['category'],
+                        'score': score,
+                        'found_elements': found_elements,
+                        'response_length': len(generated_text)
+                    })
+                    
+                    print(f"✅ {test_case['keyword']}: {score:.2f} puan")
+                else:
+                    print(f"❌ Test hatası {test_case['keyword']}: {result.stderr}")
                 
-                # Beklenen elementleri kontrol et
-                found_elements = []
-                for element in test_case['expected_elements']:
-                    if element.lower() in generated_text:
-                        found_elements.append(element)
-                
-                score = len(found_elements) / len(test_case['expected_elements'])
-                
-                results.append({
-                    'test_case': test_case['keyword'],
-                    'category': test_case['category'],
-                    'score': score,
-                    'found_elements': found_elements,
-                    'response_length': len(generated_text)
-                })
-                
-                print(f"✅ {test_case['keyword']}: {score:.2f} puan")
-                
+            except subprocess.TimeoutExpired:
+                print(f"⏱️ Test timeout {test_case['keyword']}")
             except Exception as e:
                 print(f"❌ Test hatası {test_case['keyword']}: {e}")
         
