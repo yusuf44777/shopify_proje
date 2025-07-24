@@ -421,13 +421,13 @@ if __name__ == '__main__':
     print("🚀 ShopifyGPT API sunucusu başlatılıyor...")
     print(f"📋 Varsayılan Model: {DEFAULT_MODEL}")
     print(f"🤖 Mevcut Modeller: {', '.join(AVAILABLE_MODELS) if AVAILABLE_MODELS else 'Hiçbiri'}")
-    print(f"🌐 Web Arayüzü: http://localhost:5000")
-    print(f"📡 API Endpoint: http://localhost:5000/generate")
-    print(f"❤️ Sağlık Kontrolü: http://localhost:5000/health")
+    print(f"🌐 Web Arayüzü: http://localhost:5001")
+    print(f"📡 API Endpoint: http://localhost:5001/generate")
+    print(f"❤️ Sağlık Kontrolü: http://localhost:5001/health")
     print("=" * 50)
     
     if not AVAILABLE_MODELS:
         print("⚠️ Hiçbir Ollama modeli bulunamadı!")
         print("💡 Model indirmek için: ollama pull llama2")
     
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)

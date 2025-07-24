@@ -262,7 +262,7 @@ Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için `LICENSE` dosy
 
 **Mahir Yusuf Acan**
 - GitHub: [@yusuf44777](https://github.com/yusuf44777)
-- Email: mahiryusufacan@gmail.com
+- Email: mahiryusuf531@gmail.com
 
 ## 🙏 Teşekkürler
 

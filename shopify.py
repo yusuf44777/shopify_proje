@@ -98,30 +98,31 @@ Gereksinimler:
 3. Eyleme geçmeye ilham veren etkileyici ürün özellik ve faydaları ekle
 4. Call-to-action ve satın alma motivasyonu dahil et
 5. SEO açısından anahtar kelimeyi doğal olarak entegre et
+6. EMOJİ KULLANMA - Profesyonel görünüm için başlıklarda ve metinde emoji kullanmaktan kaçın
 
 FORMAT:
 ```html
 <h1>[Etkileyici Ana Başlık]</h1>
 <p>[Motivasyonel açılış paragrafı]</p>
 
-<h2>🎯 Neden Bu Ürünü Tercih Etmelisiniz?</h2>
+<h2>Neden Bu Ürünü Tercih Etmelisiniz?</h2>
 <ul>
 <li>[Ana fayda 1]</li>
 <li>[Ana fayda 2]</li>
 <li>[Ana fayda 3]</li>
 </ul>
 
-<h2>⭐ Öne Çıkan Özellikler</h2>
+<h2>Öne Çıkan Özellikler</h2>
 <ul>
 <li>[Özellik 1 - Spesifik detay]</li>
 <li>[Özellik 2 - Spesifik detay]</li>
 <li>[Özellik 3 - Spesifik detay]</li>
 </ul>
 
-<h2>💫 Müşteri Deneyimi</h2>
+<h2>Müşteri Deneyimi</h2>
 <p>[Ürünü kullanma deneyimi ve sonuçları]</p>
 
-<h2>🚀 Hemen Sipariş Verin!</h2>
+<h2>Hemen Sipariş Verin!</h2>
 <p>[Satın alma motivasyonu ve aciliyet yaratma]</p>
 ```
 
